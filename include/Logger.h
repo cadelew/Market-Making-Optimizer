@@ -1,7 +1,6 @@
 #pragma once
-#include <spdlog/spdlog.h>
-#include <memory>
 #include <string>
+#include <iostream>
 #include "Quote.h"
 #include "Fill.h"
 
@@ -16,7 +15,7 @@ namespace mm {
         void log_error(const std::string& message);
         
     private:
-        std::shared_ptr<spdlog::logger> trade_logger_;
-        std::shared_ptr<spdlog::logger> general_logger_;
+        // Simple logging - just use std::cout for now
+        void log_with_timestamp(const std::string& level, const std::string& message);
     };
 }

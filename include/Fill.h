@@ -1,32 +1,39 @@
 #pragma once
-#include <string>
 #include <chrono>
+#include <string>
+#include <xtensor.hpp>
 
 namespace mm {
 
-    struct Fill {
-        std::chrono::system_clock::time_point timestamp;
-        std::string symbol;
-        bool is_buy;
-        double price;
-        double size;
-        long order_id;
-        double fees;
-    
-        Fill(const std::string& sym, bool buy, double price, double size, long id, double fees)
-            : symbol(sym), is_buy(buy), price(price), size(size), order_id(id), fees(fees) {
-            timestamp = std::chrono::system_clock::now();
-        }
-        
+struct Fill {
+  std::chrono::system_clock::time_point timestamp;
+  std::string symbol;
+  bool is_buy;
+  double price;
+  double size;
+  long order_id;
+  double fees;
 
-        Fill() = default;
-        
-        std::string get_side() const {
-            return is_buy ? "buy" : "sell";
-        }
-        
-        bool is_buy_fill() const {
-            return is_buy;
-        }
-    };
-}
+  Fill(const std::string &sym, bool buy, double price, double size, long id,
+       double fees)
+      : symbol(sym), is_buy(buy), price(price), size(size), order_id(id),
+        fees(fees) {
+    timestamp = std::chrono::system_clock::now();
+  }
+
+  Fill() = default;
+
+  double get_notional_value() const;
+  double get_net_amount() const;
+  bool is_valid() const;
+  std::string to_string() const;
+  double get_fee_rate() const;
+  double get_slippage_bps(double reference_price) const;
+  double get_effective_spread(double reference_price) const;
+ 
+
+  std::string get_side() const { return is_buy ? "buy" : "sell"; }
+
+  bool is_buy_fill() const { return is_buy; }
+};
+} // namespace mm
