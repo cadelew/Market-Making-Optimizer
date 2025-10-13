@@ -33,6 +33,7 @@ endif()
 find_package(xtensor CONFIG REQUIRED)
 find_package(OpenBLAS CONFIG REQUIRED)   # link OpenBLAS for BLAS support
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(libwebsockets CONFIG REQUIRED)
 
 # --------------------------
 # Include directories
@@ -51,6 +52,7 @@ set(SOURCES
     src/core/AvellanedaStoikov.cpp
     src/core/Logger.cpp
     src/core/LatencyBenchmark.cpp
+    src/core/MarketSimulator.cpp
 )
 
 set(HEADERS
@@ -63,6 +65,7 @@ set(HEADERS
     include/Logger.h
     include/LatencyBenchmark.h
     include/Symbol.h
+    include/MarketSimulator.h
 )
 
 # --------------------------
@@ -81,11 +84,22 @@ target_link_libraries(market_making_core
     nlohmann_json::nlohmann_json
 )
 
+# Windows Socket library
+if(WIN32)
+    target_link_libraries(market_making_core ws2_32)
+endif()
+
 # --------------------------
-# Example executable
+# Example executables
 # --------------------------
 add_executable(example_main src/examples/main.cpp)
 target_link_libraries(example_main PRIVATE market_making_core)
+
+add_executable(simulation_test src/examples/simulation_test.cpp)
+target_link_libraries(simulation_test PRIVATE market_making_core)
+
+add_executable(binance_websocket_test src/examples/libws_test.cpp)
+target_link_libraries(binance_websocket_test PRIVATE websockets_shared)
 
 # --------------------------
 # Testing

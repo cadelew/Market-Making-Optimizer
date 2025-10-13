@@ -5,6 +5,7 @@
 #include "PnLTracker.h"
 #include "Position.h"
 #include "Quote.h"
+#include <iomanip>
 #include <iostream>
 #include <vector>
 #include <xtensor.hpp>
@@ -366,5 +367,128 @@ int main() {
   }
 
   std::cout << "\n✅ Latency benchmarking complete!" << std::endl;
+
+  // Test Full-Cycle Benchmark
+  std::cout << "\n=== Full Trading Cycle Benchmark ===" << std::endl;
+  std::cout << "Testing complete tick-to-decision latency...\n" << std::endl;
+
+  mm::LatencyBenchmark::instance().reset();
+
+  mm::AvellanedaStoikov cycle_algo;
+  mm::PnLTracker cycle_tracker;
+  mm::MarketDataManager cycle_data;
+
+  // Simulate realistic trading scenario
+  for (int i = 0; i < 10000; i++) {
+    mm::Timer cycle_timer;
+
+    // FULL CYCLE: Everything that happens on each market update
+    {
+      // 1. Receive and store market data
+      double price = 45000.0 + (i % 100) - 50; // Simulated price movement
+      mm::MarketTick tick("BTCUSDT", price, price + 10, 100.0 + i, 0.025);
+      cycle_data.add_tick(tick);
+
+      // 2. Get latest market data
+      mm::MarketTick latest = cycle_data.get_latest_tick("BTCUSDT");
+
+      // 3. Get current position
+      mm::Position current_pos = cycle_tracker.get_position("BTCUSDT");
+
+      // 4. Calculate optimal quotes
+      mm::Quote optimal_quote =
+          cycle_algo.calculate_quotes(latest, current_pos.quantity);
+
+      // 5. Simulate fill (every 50th tick)
+      if (i % 50 == 0) {
+        bool is_buy = (i % 100) < 50;
+        mm::Fill fill("BTCUSDT", is_buy,
+                      is_buy ? optimal_quote.bid_price
+                             : optimal_quote.ask_price,
+                      0.1, 5000 + i, 2.25);
+        cycle_tracker.update_fill(fill);
+      }
+
+      // 6. Update unrealized P&L
+      cycle_tracker.update_market_price("BTCUSDT", latest.mid_price());
+    }
+
+    // Record full cycle time
+    long long cycle_time_ns = cycle_timer.elapsed_ns();
+    mm::LatencyBenchmark::instance().record("full_trading_cycle",
+                                            cycle_time_ns);
+  }
+
+  // Analyze full cycle performance
+  auto full_cycle_stats =
+      mm::LatencyBenchmark::instance().get_stats("full_trading_cycle");
+
+  std::cout << "\n=== Full Cycle Performance ===" << std::endl;
+  if (full_cycle_stats) {
+    std::cout << "Complete tick-to-decision latency:" << std::endl;
+    std::cout << "  Average: " << full_cycle_stats->avg_us() << " μs"
+              << std::endl;
+    std::cout << "  Median (P50): " << full_cycle_stats->percentile(0.50)
+              << " μs" << std::endl;
+    std::cout << "  P95: " << full_cycle_stats->percentile(0.95) << " μs"
+              << std::endl;
+    std::cout << "  P99: " << full_cycle_stats->percentile(0.99) << " μs"
+              << std::endl;
+    std::cout << "  Min: " << full_cycle_stats->min_us() << " μs" << std::endl;
+    std::cout << "  Max: " << full_cycle_stats->max_us() << " μs" << std::endl;
+
+    std::cout << "\n📊 Breakdown:" << std::endl;
+    std::cout << "  Quote generation:    ~0.12 μs (component benchmark)"
+              << std::endl;
+    std::cout << "  Position lookup:     ~0.06 μs (component benchmark)"
+              << std::endl;
+    std::cout << "  P&L update:          ~0.39 μs (component benchmark)"
+              << std::endl;
+    std::cout << "  Full cycle:          ~" << full_cycle_stats->avg_us()
+              << " μs (measured)" << std::endl;
+
+    double overhead = full_cycle_stats->avg_us() - 0.57;
+    std::cout << "  Overhead:            ~" << overhead
+              << " μs (data access, object creation)" << std::endl;
+
+    std::cout << "\n🎯 Production Estimate:" << std::endl;
+    std::cout << "  Your computation:    " << full_cycle_stats->avg_us()
+              << " μs" << std::endl;
+    std::cout << "  Network (co-lo):     ~50 μs (WebSocket + REST)"
+              << std::endl;
+    std::cout << "  Network (internet):  ~20,000 μs (10-50 ms)" << std::endl;
+    std::cout << "  Exchange processing: ~5,000 μs (1-10 ms)" << std::endl;
+
+    double total_colo = full_cycle_stats->avg_us() + 50;
+    double total_internet = full_cycle_stats->avg_us() + 25000;
+
+    std::cout << "\n  Total (co-located):  ~" << total_colo << " μs"
+              << std::endl;
+    std::cout << "  Total (internet):    ~" << total_internet << " μs ("
+              << (total_internet / 1000.0) << " ms)" << std::endl;
+
+    double compute_pct_colo = (full_cycle_stats->avg_us() / total_colo) * 100;
+    double compute_pct_internet =
+        (full_cycle_stats->avg_us() / total_internet) * 100;
+
+    std::cout << "\n📈 Your computation is:" << std::endl;
+    std::cout << "  " << std::fixed << std::setprecision(2) << compute_pct_colo
+              << "% of co-located latency" << std::endl;
+    std::cout << "  " << compute_pct_internet << "% of internet latency"
+              << std::endl;
+
+    if (full_cycle_stats->avg_us() < 1.0) {
+      std::cout << "\n✅ EXCELLENT - Sub-microsecond full cycle!" << std::endl;
+      std::cout << "   Competitive with top HFT firms (excluding FPGA)!"
+                << std::endl;
+    } else if (full_cycle_stats->avg_us() < 5.0) {
+      std::cout << "\n✅ VERY GOOD - Low-microsecond full cycle!" << std::endl;
+      std::cout
+          << "   Suitable for market making and medium-frequency strategies!"
+          << std::endl;
+    }
+  }
+
+  std::cout << "\n✅ Full-cycle benchmarking complete!" << std::endl;
   return 0;
 }

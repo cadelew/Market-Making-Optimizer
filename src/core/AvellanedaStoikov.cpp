@@ -4,7 +4,6 @@
 #include "MarketData.h"
 #include <cmath>
 
-
 namespace mm {
 
 AvellanedaStoikov::AvellanedaStoikov() {
