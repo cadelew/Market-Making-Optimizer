@@ -35,42 +35,5 @@ std::string Quote::to_string() const {
          std::to_string(ask_size) + " id:" + std::to_string(order_id) + "}";
 }
 
-// Static methods for batch processing with xtensor
-xt::xarray<double>
-Quote::calculate_mid_prices(const std::vector<Quote> &quotes) {
-  if (quotes.empty()) {
-    return xt::xarray<double>();
-  }
-
-  xt::xarray<double> mid_prices = xt::zeros<double>({quotes.size()});
-  for (size_t i = 0; i < quotes.size(); ++i) {
-    mid_prices(i) = quotes[i].mid_price();
-  }
-  return mid_prices;
-}
-
-xt::xarray<double> Quote::calculate_spreads(const std::vector<Quote> &quotes) {
-  if (quotes.empty()) {
-    return xt::xarray<double>();
-  }
-
-  xt::xarray<double> spreads = xt::zeros<double>({quotes.size()});
-  for (size_t i = 0; i < quotes.size(); ++i) {
-    spreads(i) = quotes[i].spread();
-  }
-  return spreads;
-}
-
-xt::xarray<bool> Quote::validate_quotes(const std::vector<Quote> &quotes) {
-  if (quotes.empty()) {
-    return xt::xarray<bool>();
-  }
-
-  xt::xarray<bool> valid = xt::zeros<bool>({quotes.size()});
-  for (size_t i = 0; i < quotes.size(); ++i) {
-    valid(i) = quotes[i].is_valid();
-  }
-  return valid;
-}
 
 } // namespace mm

@@ -1,7 +1,6 @@
 #pragma once
 #include <chrono>
 #include <string>
-#include <xtensor.hpp>
 
 namespace mm {
 
@@ -41,11 +40,6 @@ struct Quote {
   bool is_better_ask(double market_ask) const;
   std::string to_string() const;
 
-  // Static methods for batch processing with xtensor
-  static xt::xarray<double>
-  calculate_mid_prices(const std::vector<Quote> &quotes);
-  static xt::xarray<double> calculate_spreads(const std::vector<Quote> &quotes);
-  static xt::xarray<bool> validate_quotes(const std::vector<Quote> &quotes);
 };
 
 } // namespace mm

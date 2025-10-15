@@ -30,10 +30,11 @@ endif()
 # --------------------------
 # Dependencies via vcpkg
 # --------------------------
-find_package(xtensor CONFIG REQUIRED)
+# find_package(xtensor CONFIG REQUIRED)  # Not currently used
 find_package(OpenBLAS CONFIG REQUIRED)   # link OpenBLAS for BLAS support
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(libwebsockets CONFIG REQUIRED)
+find_package(libpqxx CONFIG REQUIRED)
 
 # --------------------------
 # Include directories
@@ -53,6 +54,7 @@ set(SOURCES
     src/core/Logger.cpp
     src/core/LatencyBenchmark.cpp
     src/core/MarketSimulator.cpp
+    src/core/DatabaseManager.cpp
 )
 
 set(HEADERS
@@ -66,6 +68,7 @@ set(HEADERS
     include/LatencyBenchmark.h
     include/Symbol.h
     include/MarketSimulator.h
+    include/DatabaseManager.h
 )
 
 # --------------------------
@@ -82,6 +85,7 @@ target_include_directories(market_making_core
 target_link_libraries(market_making_core
     OpenBLAS::OpenBLAS
     nlohmann_json::nlohmann_json
+    libpqxx::pqxx
 )
 
 # Windows Socket library
@@ -98,8 +102,8 @@ target_link_libraries(example_main PRIVATE market_making_core)
 add_executable(simulation_test src/examples/simulation_test.cpp)
 target_link_libraries(simulation_test PRIVATE market_making_core)
 
-add_executable(binance_websocket_test src/examples/libws_test.cpp)
-target_link_libraries(binance_websocket_test PRIVATE websockets_shared)
+add_executable(simple_as_engine src/examples/simple_as_engine.cpp)
+target_link_libraries(simple_as_engine PRIVATE market_making_core websockets_shared)
 
 # --------------------------
 # Testing

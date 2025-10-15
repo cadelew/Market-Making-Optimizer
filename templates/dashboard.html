@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Dashboard - Market Making Optimizer</title>
+    <!-- Simple charting without external dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #4ade80, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            height: calc(100vh - 80px);
+            gap: 10px;
+            padding: 10px;
+        }
+
+        /* Simulation Control Bar */
+        .control-bar {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .control-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-section h4 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-group label {
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .control-select {
+            background: #1e293b;
+            color: white;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            min-width: 120px;
+        }
+
+        .control-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        }
+
+        .control-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-start {
+            background: #059669;
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            background: #047857;
+        }
+
+        .btn-stop {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #b91c1c;
+        }
+
+        .btn-secondary {
+            background: #7c3aed;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #6d28d9;
+        }
+
+        .btn-info {
+            background: #0891b2;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #0e7490;
+        }
+
+        /* Top Panel - Chart */
+        .chart-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 400px;
+        }
+
+        .chart-panel h3 {
+            color: #22d3ee;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Middle Panel - Side by Side */
+        .middle-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            height: 100%;
+        }
+
+        /* Order Book Panel */
+        .orderbook-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .orderbook-panel h3 {
+            color: #22d3ee;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .orderbook {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.8rem;
+        }
+
+        .orderbook-side h4 {
+            color: #4ade80;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .orderbook-side.sells h4 {
+            color: #f87171;
+        }
+
+        .orderbook-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .orderbook-row:last-child {
+            border-bottom: none;
+        }
+
+        /* Trades Tape Panel */
+        .trades-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .trades-panel h3 {
+            color: #22d3ee;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .trades-list {
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+        }
+
+        .trade-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+            font-weight: bold;
+            font-size: 0.8em;
+            color: #888;
+            gap: 8px;
+        }
+
+        .trade-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            gap: 8px;
+        }
+
+        .trade-row.buy {
+            color: #4ade80;
+        }
+
+        .trade-row.sell {
+            color: #f87171;
+        }
+
+        /* Bottom Panel - Trading Status */
+        .status-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .status-card {
+            text-align: center;
+        }
+
+        .status-card h4 {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #4ade80;
+        }
+
+        .status-value.negative {
+            color: #f87171;
+        }
+
+        .status-value.neutral {
+            color: #22d3ee;
+        }
+
+        /* System Health Widget */
+        .health-widget {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 0.7rem;
+            z-index: 1000;
+        }
+
+        .health-indicator {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        .health-indicator.online {
+            background: #4ade80;
+            box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+        }
+
+        .health-indicator.offline {
+            background: #f87171;
+            box-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
+        }
+
+        .loading {
+            text-align: center;
+            color: #94a3b8;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .middle-panel {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-panel {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Trading Dashboard</h1>
+        <p>Market Making Optimizer - Real-time Performance Monitoring</p>
+    </div>
+
+
+    <div class="main-container">
+        <!-- Simulation Control Bar -->
+        <div class="control-bar">
+            <div class="control-section">
+                <h4>Simulation Controls</h4>
+                <div class="control-group">
+                    <label for="duration-select">Duration:</label>
+                    <select id="duration-select" class="control-select">
+                        <option value="30">30 seconds</option>
+                        <option value="60">1 minute</option>
+                        <option value="120" selected>2 minutes</option>
+                        <option value="300">5 minutes</option>
+                        <option value="600">10 minutes</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <div class="control-group">
+                    <button id="start-engine-btn" onclick="startEngine()" class="control-button btn-start">▶️ Start Engine</button>
+                    <button id="stop-engine-btn" onclick="stopEngine()" class="control-button btn-stop" disabled>⏹️ Stop Engine</button>
+                </div>
+                <div class="control-group">
+                    <button onclick="clearChart()" class="control-button btn-secondary">🗑️ Clear Chart</button>
+                    <button onclick="showSimulationHistory()" class="control-button btn-info">📊 History</button>
+                </div>
+            </div>
+            
+            <div class="control-section">
+                <div id="loading-indicator" style="display: none; color: #fbbf24; font-size: 12px; font-weight: 500;">
+                    🔄 Connecting to Binance...
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Panel - Price Chart -->
+        <div class="chart-panel">
+            <h3>📈 BTCUSDT Price Chart</h3>
+            <div id="tradingview-chart" style="width: 100%; height: 350px;"></div>
+        </div>
+
+        <!-- Trading Status Panel -->
+        <div class="status-panel">
+            <div class="status-card">
+                <h4>Position</h4>
+                <div class="status-value" id="position-value">0.00 BTC</div>
+            </div>
+            <div class="status-card">
+                <h4>Realized P&L</h4>
+                <div class="status-value" id="realized-pnl">$0.00</div>
+            </div>
+            <div class="status-card">
+                <h4>Unrealized P&L</h4>
+                <div class="status-value" id="unrealized-pnl">$0.00</div>
+            </div>
+            <div class="status-card">
+                <h4>Total P&L</h4>
+                <div class="status-value" id="total-pnl">$0.00</div>
+            </div>
+        </div>
+
+        <!-- Middle Panel - Order Book & Trades -->
+        <div class="middle-panel">
+            <div class="orderbook-panel">
+                <h3>Order Book</h3>
+                <div class="orderbook">
+                    <div class="orderbook-side sells">
+                        <h4>Asks (Sell)</h4>
+                        <div id="asks-list" class="loading">Loading...</div>
+                    </div>
+                    <div class="orderbook-side">
+                        <h4>Bids (Buy)</h4>
+                        <div id="bids-list" class="loading">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="trades-panel">
+                <h3>Recent Trades</h3>
+                <div class="trades-list" id="trades-list">
+                    <div class="trade-header">
+                        <span class="time-header">Time</span>
+                        <span class="side-header">Side</span>
+                        <span class="price-header">Price</span>
+                        <span class="size-header">Size</span>
+                    </div>
+                    <div class="loading">Loading trades...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let chart;
+        let candlestickSeries;
+        let bidLineSeries;
+        let askLineSeries;
+        let lastPrice = null;
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Dashboard DOM loaded, initializing...');
+            
+            // Test basic functionality first
+            console.log('📊 Testing API connection...');
+            fetch('/api/live-stats')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ API test successful:', data);
+                    initializeChart();
+                    loadData();
+                    
+                    // Auto-refresh every 2 seconds for real-time feel
+                    setInterval(loadData, 2000);
+                })
+                .catch(error => {
+                    console.error('❌ API test failed:', error);
+                    document.body.innerHTML += '<div style="color: red; padding: 20px;">API Connection Failed: ' + error.message + '</div>';
+                });
+        });
+        
+        // Initialize Chart.js with bid/ask overlay
+        function initializeChart() {
+            const chartContainer = document.getElementById('tradingview-chart');
+            
+            // Check if Chart.js is available
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js library not loaded');
+                chartContainer.innerHTML = '<div style="color: white; text-align: center; padding: 50px;">Chart library loading...</div>';
+                return;
+            }
+            
+            // Create canvas element
+            chartContainer.innerHTML = '<canvas id="price-chart"></canvas>';
+            const ctx = document.getElementById('price-chart').getContext('2d');
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'BTC Price',
+                            data: [],
+                            borderColor: '#4ade80',
+                            backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,  // Increased for smoother curves
+                            pointRadius: 0,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Bid',
+                            data: [],
+                            borderColor: '#ff6b6b',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.4  // Increased for smoother curves
+                        },
+                        {
+                            label: 'Ask',
+                            data: [],
+                            borderColor: '#4ecdc4',
+                            backgroundColor: 'transparent',
+                            borderWidth: 1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 4,
+                            tension: 0.4  // Increased for smoother curves
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#ffffff',
+                                maxTicksLimit: 20  // Show fewer labels for cleaner look
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            ticks: {
+                                color: '#ffffff',
+                                maxTicksLimit: 8,  // Limit number of ticks to prevent overlap
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString('en-US', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    });
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+        
+        // Load all dashboard data efficiently
+        let isLoading = false;
+        async function loadData() {
+            if (isLoading) return;
+            isLoading = true;
+            
+            console.log('Loading dashboard data...');
+            
+            try {
+                await Promise.all([
+                    loadChartData(),
+                    loadOrderBook(),
+                    loadRecentTrades(),
+                    loadTradingStatus(),
+                    loadSystemHealth()
+                ]);
+                console.log('✅ Dashboard data loaded successfully');
+            } catch (error) {
+                console.error('❌ Error loading data:', error);
+            } finally {
+                isLoading = false;
+            }
+        }
+        
+        // Load chart data with bid/ask overlay - now tick-by-tick
+        async function loadChartData() {
+            try {
+                console.log('📊 Loading chart data...');
+                const response = await fetch('/api/performance-data');
+                console.log('📊 Chart API response status:', response.status);
+                const data = await response.json();
+                console.log('📊 Chart data received:', data);
+                
+                if (data && data.length > 0) {
+                    // Convert to Chart.js format - now using individual ticks
+                    const labels = data.map(d => {
+                        const date = new Date(d.time);
+                        return date.toLocaleTimeString('en-US', { 
+                            hour12: false, 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            second: '2-digit' 
+                        });
+                    });
+                    const midPrices = data.map(d => parseFloat(d.mid_price || 0));
+                    const bidPrices = data.map(d => parseFloat(d.bid || 0));
+                    const askPrices = data.map(d => parseFloat(d.ask || 0));
+                    
+                    // Update chart data with real bid/ask
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = midPrices; // Mid Price
+                    chart.data.datasets[1].data = bidPrices; // Bid line (real data)
+                    chart.data.datasets[2].data = askPrices; // Ask line (real data)
+                    
+                    // Dynamic Y-axis scaling that adjusts to price changes
+                    const allPrices = [...midPrices, ...bidPrices, ...askPrices].filter(p => p > 0);
+                    if (allPrices.length > 0) {
+                        const minPrice = Math.min(...allPrices);
+                        const maxPrice = Math.max(...allPrices);
+                        const range = maxPrice - minPrice;
+                        
+                        // Very tight scaling to show actual price movement
+                        const centerPrice = (minPrice + maxPrice) / 2;
+                        
+                        // If price range is very small, use a minimum range based on center price
+                        let finalRange;
+                        if (range < centerPrice * 0.0001) { // Less than 0.01% movement
+                            finalRange = centerPrice * 0.0005; // 0.05% of center price
+                        } else {
+                            finalRange = range * 1.2; // 20% buffer around actual range
+                        }
+                        
+                        const buffer = finalRange / 2;
+                        chart.options.scales.y.min = centerPrice - buffer;
+                        chart.options.scales.y.max = centerPrice + buffer;
+                    }
+                    
+                    chart.update('none'); // Update without animation for real-time feel
+                } else {
+                    console.log('No chart data available yet');
+                }
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+            }
+        }
+        
+        // Load order book data
+        async function loadOrderBook() {
+            try {
+                const response = await fetch('/api/orderbook');
+                const data = await response.json();
+                
+                // Update asks (sell orders)
+                const asksList = document.getElementById('asks-list');
+                if (data && data.asks && data.asks.length > 0) {
+                    asksList.innerHTML = '';
+                    data.asks.slice(0, 5).forEach(ask => {
+                        const row = document.createElement('div');
+                        row.className = 'orderbook-row';
+                        row.innerHTML = `
+                            <span>$${ask.price.toFixed(2)}</span>
+                            <span>${ask.size.toFixed(3)}</span>
+                        `;
+                        asksList.appendChild(row);
+                    });
+                } else {
+                    asksList.innerHTML = '<div class="loading">No data</div>';
+                }
+                
+                // Update bids (buy orders)
+                const bidsList = document.getElementById('bids-list');
+                if (data && data.bids && data.bids.length > 0) {
+                    bidsList.innerHTML = '';
+                    data.bids.slice(0, 5).forEach(bid => {
+                        const row = document.createElement('div');
+                        row.className = 'orderbook-row';
+                        row.innerHTML = `
+                            <span>$${bid.price.toFixed(2)}</span>
+                            <span>${bid.size.toFixed(3)}</span>
+                        `;
+                        bidsList.appendChild(row);
+                    });
+                } else {
+                    bidsList.innerHTML = '<div class="loading">No data</div>';
+                }
+            } catch (error) {
+                console.error('Error loading order book:', error);
+            }
+        }
+        
+        // Load recent trades
+        async function loadRecentTrades() {
+            try {
+                const response = await fetch('/api/recent-trades');
+                const trades = await response.json();
+                
+                const tradesList = document.getElementById('trades-list');
+                tradesList.innerHTML = `
+                    <div class="trade-header">
+                        <span class="time-header">Time</span>
+                        <span class="side-header">Side</span>
+                        <span class="price-header">Price</span>
+                        <span class="size-header">Size</span>
+                    </div>
+                `;
+                
+                if (trades && trades.length > 0) {
+                    trades.slice(0, 10).forEach(trade => {
+                        const row = document.createElement('div');
+                        row.className = `trade-row ${trade.side}`;
+                        row.innerHTML = `
+                            <span class="time">${trade.time}</span>
+                            <span class="side ${trade.side}">${trade.side.toUpperCase()}</span>
+                            <span class="price">$${parseFloat(trade.price).toFixed(2)}</span>
+                            <span class="size">${parseFloat(trade.size).toFixed(4)}</span>
+                        `;
+                        tradesList.appendChild(row);
+                    });
+                } else {
+                    tradesList.innerHTML += '<div class="loading">No trades</div>';
+                }
+            } catch (error) {
+                console.error('Error loading recent trades:', error);
+            }
+        }
+        
+        // Load trading status
+        async function loadTradingStatus() {
+            try {
+                const response = await fetch('/api/trading-status');
+                const data = await response.json();
+                
+                if (data) {
+                    document.getElementById('position-value').textContent = `${data.position} BTC`;
+                    
+                    document.getElementById('realized-pnl').textContent = `$${data.realized_pnl.toFixed(2)}`;
+                    document.getElementById('realized-pnl').className = `status-value ${data.realized_pnl >= 0 ? '' : 'negative'}`;
+                    
+                    document.getElementById('unrealized-pnl').textContent = `$${data.unrealized_pnl.toFixed(2)}`;
+                    document.getElementById('unrealized-pnl').className = `status-value ${data.unrealized_pnl >= 0 ? '' : 'negative'}`;
+                    
+                    document.getElementById('total-pnl').textContent = `$${data.total_pnl.toFixed(2)}`;
+                    document.getElementById('total-pnl').className = `status-value ${data.total_pnl >= 0 ? '' : 'negative'}`;
+                    
+                }
+            } catch (error) {
+                console.error('Error loading trading status:', error);
+            }
+        }
+        
+        // Load system health
+        async function loadSystemHealth() {
+            try {
+                const response = await fetch('/api/system-health');
+                const data = await response.json();
+                
+                if (data) {
+                    const wsStatus = document.getElementById('ws-status');
+                    const dbStatus = document.getElementById('db-status');
+                    const latencyText = document.getElementById('latency-text');
+                    
+                    wsStatus.className = `health-indicator ${data.websocket_connected ? 'online' : 'offline'}`;
+                    dbStatus.className = `health-indicator ${data.database_healthy ? 'online' : 'offline'}`;
+                    latencyText.textContent = `${data.data_lag_ms}ms`;
+                }
+                
+                // Also check engine status
+                await updateEngineStatus();
+            } catch (error) {
+                console.error('Error loading system health:', error);
+            }
+        }
+        
+        // Update engine status indicator
+        async function updateEngineStatus() {
+            try {
+                const response = await fetch('/api/engine/status');
+                const data = await response.json();
+                
+                // Removed engine status display elements
+                const startBtn = document.getElementById('start-engine-btn');
+                const stopBtn = document.getElementById('stop-engine-btn');
+                const durationSelect = document.getElementById('duration-select');
+                
+                if (data.running) {
+                    // Engine is running
+                    startBtn.disabled = true;
+                    startBtn.style.opacity = '0.5';
+                    stopBtn.disabled = false;
+                    stopBtn.style.opacity = '1';
+                    durationSelect.disabled = true;
+                    
+                    // Progress bar removed
+                } else {
+                    // Engine is stopped
+                    startBtn.disabled = false;
+                    startBtn.style.opacity = '1';
+                    stopBtn.disabled = true;
+                    stopBtn.style.opacity = '0.5';
+                    durationSelect.disabled = false;
+                    
+                    // Progress bar removed
+                }
+            } catch (error) {
+                console.error('Error checking engine status:', error);
+            }
+        }
+        
+        // Clear chart data
+        function clearChart() {
+            if (typeof chart !== 'undefined' && chart) {
+                chart.data.labels = [];
+                chart.data.datasets.forEach(dataset => {
+                    dataset.data = [];
+                });
+                chart.update('none');
+            }
+            
+            // Also clear recent trades for a fresh start
+            const tradesList = document.getElementById('trades-list');
+            if (tradesList) {
+                tradesList.innerHTML = '<div class="loading">Starting new simulation...</div>';
+            }
+        }
+
+        // Show simulation history modal
+        async function showSimulationHistory() {
+            try {
+                const response = await fetch('/api/simulations');
+                const simulations = await response.json();
+                
+                // Create modal
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                    background: rgba(0,0,0,0.8); z-index: 1000; display: flex; 
+                    align-items: center; justify-content: center; padding: 20px;
+                `;
+                
+                const modalContent = document.createElement('div');
+                modalContent.style.cssText = `
+                    background: #1e293b; border-radius: 8px; padding: 20px; 
+                    max-width: 90%; max-height: 80%; overflow-y: auto;
+                    border: 1px solid #475569;
+                `;
+                
+                let html = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="color: white; margin: 0;">📊 Simulation History</h3>
+                        <button onclick="this.closest('.modal').remove()" style="background: #dc2626; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">✕ Close</button>
+                    </div>
+                `;
+                
+                if (simulations.length === 0) {
+                    html += '<p style="color: #94a3b8;">No simulations found.</p>';
+                } else {
+                    html += `
+                        <div style="overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse; color: white; font-size: 12px;">
+                                <thead>
+                                    <tr style="background: #374151;">
+                                        <th style="padding: 8px; border: 1px solid #475569;">Time</th>
+                                        <th style="padding: 8px; border: 1px solid #475569;">Duration</th>
+                                        <th style="padding: 8px; border: 1px solid #475569;">Status</th>
+                                        <th style="padding: 8px; border: 1px solid #475569;">P&L</th>
+                                        <th style="padding: 8px; border: 1px solid #475569;">Fills</th>
+                                        <th style="padding: 8px; border: 1px solid #475569;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    simulations.forEach(sim => {
+                        const startTime = new Date(sim.start_time).toLocaleString();
+                        const duration = sim.actual_duration ? `${Math.round(sim.actual_duration)}s` : 'N/A';
+                        const status = sim.status;
+                        const pnl = sim.final_stats?.total_pnl ? `$${parseFloat(sim.final_stats.total_pnl).toFixed(2)}` : 'N/A';
+                        const fills = sim.final_stats?.fill_count || 'N/A';
+                        
+                        html += `
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #475569;">${startTime}</td>
+                                <td style="padding: 8px; border: 1px solid #475569;">${duration}</td>
+                                <td style="padding: 8px; border: 1px solid #475569;">
+                                    <span style="color: ${status === 'completed' ? '#4ade80' : status === 'running' ? '#fbbf24' : '#ef4444'};">
+                                        ${status.toUpperCase()}
+                                    </span>
+                                </td>
+                                <td style="padding: 8px; border: 1px solid #475569; color: ${pnl.startsWith('$-') ? '#ef4444' : '#4ade80'};">${pnl}</td>
+                                <td style="padding: 8px; border: 1px solid #475569;">${fills}</td>
+                                <td style="padding: 8px; border: 1px solid #475569;">
+                                    <button onclick="loadSimulation('${sim.simulation_id}')" 
+                                            style="background: #0891b2; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                        📈 View
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table></div>';
+                }
+                
+                modalContent.innerHTML = html;
+                modal.appendChild(modalContent);
+                modal.className = 'modal';
+                document.body.appendChild(modal);
+                
+            } catch (error) {
+                console.error('Error loading simulation history:', error);
+                alert('Failed to load simulation history');
+            }
+        }
+
+        // Load specific simulation data
+        async function loadSimulation(simulationId) {
+            try {
+                // Close modal
+                document.querySelector('.modal')?.remove();
+                
+                // Load chart data for this simulation
+                const response = await fetch(`/api/performance-data?simulation_id=${simulationId}`);
+                const data = await response.json();
+                
+                if (data.length > 0) {
+                    // Update chart with simulation data
+                    if (typeof chart !== 'undefined' && chart) {
+                        chart.data.labels = data.map(d => new Date(d.time).toLocaleTimeString());
+                        chart.data.datasets[0].data = data.map(d => d.mid_price);
+                        chart.data.datasets[1].data = data.map(d => d.bid);
+                        chart.data.datasets[2].data = data.map(d => d.ask);
+                        chart.update('none');
+                    }
+                    
+                    // Show simulation info
+                    alert(`Loaded simulation ${simulationId}\nData points: ${data.length}\nTime range: ${new Date(data[0].time).toLocaleString()} to ${new Date(data[data.length-1].time).toLocaleString()}`);
+                } else {
+                    alert('No data found for this simulation');
+                }
+            } catch (error) {
+                console.error('Error loading simulation:', error);
+                alert('Failed to load simulation data');
+            }
+        }
+
+        // Start engine
+        async function startEngine() {
+            try {
+                const duration = document.getElementById('duration-select').value;
+                
+                // Show loading indicator
+                document.getElementById('loading-indicator').style.display = 'block';
+                document.getElementById('start-engine-btn').disabled = true;
+                document.getElementById('start-engine-btn').textContent = '🔄 Starting...';
+                
+                // Clear the chart for a fresh start
+                clearChart();
+                
+                const response = await fetch('/api/engine/start', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ duration: parseInt(duration) })
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    console.log(`✅ Engine started successfully (PID: ${data.pid}, Duration: ${duration}s)`);
+                    // Hide loading indicator after a short delay
+                    setTimeout(() => {
+                        document.getElementById('loading-indicator').style.display = 'none';
+                        document.getElementById('start-engine-btn').disabled = false;
+                        document.getElementById('start-engine-btn').textContent = '▶️ Start Engine';
+                        updateEngineStatus();
+                    }, 3000);
+                } else {
+                    console.error(`❌ Failed to start engine: ${data.error}`);
+                    document.getElementById('loading-indicator').style.display = 'none';
+                    document.getElementById('start-engine-btn').disabled = false;
+                    document.getElementById('start-engine-btn').textContent = '▶️ Start Engine';
+                }
+            } catch (error) {
+                console.error('Error starting engine:', error);
+                document.getElementById('loading-indicator').style.display = 'none';
+                document.getElementById('start-engine-btn').disabled = false;
+                document.getElementById('start-engine-btn').textContent = '▶️ Start Engine';
+            }
+        }
+        
+        // Stop engine
+        async function stopEngine() {
+            if (!confirm('Are you sure you want to stop the trading engine?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/engine/stop', { method: 'POST' });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    alert(`✅ Engine stopped successfully (PID: ${data.pid})`);
+                    await updateEngineStatus();
+                } else {
+                    alert(`❌ Failed to stop engine: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`❌ Error stopping engine: ${error.message}`);
+            }
+        }
+        
+        // Database-driven updates (no WebSocket needed)
+        function updateSystemHealth() {
+            // Set WebSocket status to online since we're using database approach
+            document.getElementById('ws-status').className = 'health-indicator online';
+            document.getElementById('ws-status').title = 'Database-driven updates';
+        }
+        
+        
+        // Update system health after initial load
+        setTimeout(updateSystemHealth, 2000);
+    </script>
+</body>
+</html>

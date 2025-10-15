@@ -8,7 +8,7 @@ namespace mm {
 
 AvellanedaStoikov::AvellanedaStoikov() {
   gamma_ = 0.1;
-  sigma_ = 0.02;
+  sigma_ = 0.05; // Increased from 0.02 to 0.05 (5% - more realistic for crypto)
   T_ = 60.0;
   kappa_ = 1.5;
 }

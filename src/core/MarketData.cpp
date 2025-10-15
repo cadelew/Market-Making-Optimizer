@@ -6,7 +6,6 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <xtensor.hpp>
 
 namespace mm {
 
