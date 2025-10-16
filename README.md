@@ -34,7 +34,7 @@ A high-performance C++ market-making system implementing the Avellaneda-Stoikov 
 - **Risk Controls**: Inventory limits, spread widening, P&L kill switches
 
 ### Real-time Dashboard
-![Dashboard Overview](screenshots/Screenshot%202025-10-15%20154829.png)
+![Dashboard Overview](screenshots/Screenshot%202025-10-15%20161858.png)
 *Real-time trading dashboard showing live market data, order book, and performance metrics*
 
 ### Performance Optimizations
@@ -49,8 +49,11 @@ A high-performance C++ market-making system implementing the Avellaneda-Stoikov 
 - **Risk Monitoring**: Position tracking, P&L analysis, fill rates
 - **Web Dashboard**: Real-time visualization with TradingView-style charts
 
-![Performance Metrics](screenshots/Screenshot%202025-10-15%20161858.png)
+![Performance Metrics](screenshots/Screenshot%202025-10-15%20162130.png)
 *Live performance monitoring showing latency tracking, quote generation stats, and risk metrics*
+![Simulation History](screenshots/Screenshot%202025-10-15%20154429.png)
+
+
 
 ## Technology Stack
 
