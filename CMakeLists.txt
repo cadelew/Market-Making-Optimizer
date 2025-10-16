@@ -11,13 +11,13 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-# Compiler flags - MSVC compatible
+# Compiler flags
 if(MSVC)
-    set(CMAKE_CXX_FLAGS_DEBUG "/Zi /Od /W3")
-    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /DNDEBUG /arch:AVX2")
+    set(CMAKE_CXX_FLAGS_DEBUG "/Zi /O1 /Ob1 /W3 /arch:AVX2")
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /Ob2 /Oi /Ot /Oy /GL /DNDEBUG /arch:AVX2 /fp:fast")
 else()
-    set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
+    set(CMAKE_CXX_FLAGS_DEBUG "-g -O1 -Wall -Wextra -march=native")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native -ffast-math")
 endif()
 
 # --------------------------
@@ -30,19 +30,14 @@ endif()
 # --------------------------
 # Dependencies via vcpkg
 # --------------------------
-# find_package(xtensor CONFIG REQUIRED)  # Not currently used
-find_package(OpenBLAS CONFIG REQUIRED)   # link OpenBLAS for BLAS support
+find_package(OpenBLAS CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(libwebsockets CONFIG REQUIRED)
 find_package(libpqxx CONFIG REQUIRED)
+# Optimized implementation with pre-computed constants and batch processing
 
 # --------------------------
-# Include directories
-# --------------------------
-include_directories(include)
-
-# --------------------------
-# Source files
+# Source and header files
 # --------------------------
 set(SOURCES
     src/core/MarketData.cpp
@@ -76,21 +71,23 @@ set(HEADERS
 # --------------------------
 add_library(market_making_core STATIC ${SOURCES} ${HEADERS})
 
-# xtensor is header-only, no linking needed
-target_include_directories(market_making_core
-    PRIVATE include
-)
-
-# Link libraries
+# Link dependencies
 target_link_libraries(market_making_core
-    OpenBLAS::OpenBLAS
-    nlohmann_json::nlohmann_json
-    libpqxx::pqxx
+    PRIVATE
+        OpenBLAS::OpenBLAS
+        nlohmann_json::nlohmann_json
+        libpqxx::pqxx
 )
 
-# Windows Socket library
+# Include your own headers
+target_include_directories(market_making_core
+    PRIVATE
+        include
+)
+
+# Windows sockets
 if(WIN32)
-    target_link_libraries(market_making_core ws2_32)
+    target_link_libraries(market_making_core PRIVATE ws2_32)
 endif()
 
 # --------------------------
@@ -103,6 +100,7 @@ add_executable(simulation_test src/examples/simulation_test.cpp)
 target_link_libraries(simulation_test PRIVATE market_making_core)
 
 add_executable(simple_as_engine src/examples/simple_as_engine.cpp)
+target_include_directories(simple_as_engine PRIVATE include)
 target_link_libraries(simple_as_engine PRIVATE market_making_core websockets_shared)
 
 # --------------------------
